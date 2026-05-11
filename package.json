@@ -1,6 +1,6 @@
 {
   "name": "momo",
-  "version": "0.5.3",
+  "version": "0.5.4",
   "productName": "MOMO",
   "description": "MOMO autonomous AI agent with built-in GGML runtime, multi-model orchestration, automation, and self-learning",
   "author": {
