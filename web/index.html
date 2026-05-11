@@ -15,7 +15,7 @@
   <link rel="icon" href="/momo-icon.jpg?v=2" />
   <link rel="apple-touch-icon" href="/momo-icon.jpg?v=2" />
   <link rel="manifest" href="/manifest.json?v=2" />
-  <link rel="stylesheet" href="/styles.css?v=0.9.4" />
+  <link rel="stylesheet" href="/styles.css?v=0.9.24" />
 </head>
 <body>
 
@@ -93,160 +93,217 @@
       </div>
     </aside>
 
-    <!-- Chat Workspace (right area, flex-1) -->
+    <!-- Chat Workspace (two-column: output | input) -->
     <div class="chat-workspace" id="chat-workspace">
 
-      <!-- Context Bar (current task info) -->
-      <div class="context-bar" id="context-bar" style="display:none">
-        <div class="context-bar-info">
-          <span class="context-bar-task-name" id="context-bar-task-name"></span>
-          <span class="context-bar-status-badge" id="context-bar-status-badge"></span>
+      <!-- ═══ LEFT: OUTPUT PANEL ═══ -->
+      <div class="output-panel" id="output-panel">
+
+        <!-- Context Bar (current task info) -->
+        <div class="context-bar" id="context-bar" style="display:none">
+          <div class="context-bar-info">
+            <span class="context-bar-task-name" id="context-bar-task-name"></span>
+            <span class="context-bar-status-badge" id="context-bar-status-badge"></span>
+          </div>
+          <div class="context-bar-stats">
+            <span class="context-bar-stat" id="context-bar-cycles" title="Cycles"></span>
+            <span class="context-bar-stat" id="context-bar-steps" title="Steps"></span>
+          </div>
+          <button class="context-bar-toggle" id="context-bar-toggle" title="Toggle context panel" aria-label="Toggle context panel">◨</button>
         </div>
-        <div class="context-bar-stats">
-          <span class="context-bar-stat" id="context-bar-cycles" title="Cycles"></span>
-          <span class="context-bar-stat" id="context-bar-steps" title="Steps"></span>
+
+        <!-- Home View (hidden by default) -->
+        <div class="home-view" id="home-view" style="display:none">
+          <div class="home-view-content">
+            <h2 class="home-view-title">Choose a project to start working</h2>
+            <p class="home-view-subtitle">or create a new project below</p>
+            <div class="home-project-grid" id="home-project-grid"></div>
+            <button class="home-new-project-btn" id="home-new-project-btn">+ New Project</button>
+          </div>
         </div>
-        <button class="context-bar-toggle" id="context-bar-toggle" title="Toggle context panel" aria-label="Toggle context panel">◨</button>
-      </div>
 
-      <!-- Home View (hidden by default — chat is primary) -->
-      <div class="home-view" id="home-view" style="display:none">
-        <div class="home-view-content">
-          <h2 class="home-view-title">Choose a project to start working</h2>
-          <p class="home-view-subtitle">or create a new project below</p>
-          <div class="home-project-grid" id="home-project-grid"></div>
-          <button class="home-new-project-btn" id="home-new-project-btn">+ New Project</button>
+        <!-- Progress bar -->
+        <div id="message-progress"><div id="message-progress-fill" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" aria-label="Task progress"></div></div>
+
+        <!-- Message List -->
+        <div class="message-list" id="message-list"></div>
+
+        <!-- Welcome -->
+        <div class="chat-welcome" id="chat-welcome">
+          <div class="chat-welcome-logo"></div>
+          <h1 class="chat-welcome-title">MOMO</h1>
+          <p class="chat-welcome-tagline">Your autonomous AI agent</p>
         </div>
-      </div>
 
-      <!-- Progress bar (above message list, survives clears) -->
-      <div id="message-progress"><div id="message-progress-fill" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" aria-label="Task progress"></div></div>
+        <!-- Execution Timeline -->
+        <div id="timeline" class="timeline" style="display:none">
+          <div class="timeline-progress">
+            <div class="timeline-progress-fill" id="timeline-progress-fill"></div>
+          </div>
+        </div>
 
-      <!-- Message List (chat/conversation — primary view) -->
-      <div class="message-list" id="message-list"></div>
+        <!-- Streaming output -->
+        <div class="streaming-output" id="streaming-output" style="display:none">
+          <div class="streaming-header">Streaming output</div>
+          <div class="streaming-text" id="streaming-text"></div>
+        </div>
 
-      <!-- Welcome (shown when no messages) -->
-      <div class="chat-welcome" id="chat-welcome">
-        <div class="chat-welcome-logo"></div>
-        <h1 class="chat-welcome-title">MOMO</h1>
-        <p class="chat-welcome-tagline">Your autonomous AI agent</p>
-      </div>
+        <!-- Result -->
+        <div id="result-section" class="card result-card" style="display:none">
+          <div class="result-header">
+            <span class="result-state" id="result-state"></span>
+            <span class="result-summary-text" id="result-summary"></span>
+            <div class="result-actions">
+              <button id="retry-btn" class="action-btn" style="display:none" data-i18n="retry">Retry</button>
+              <button id="replay-btn" class="action-btn" style="display:none" data-i18n="selfImprove">Self-improve</button>
+              <button id="toggle-steps-btn" class="action-btn" data-i18n="steps">Steps ▾</button>
+              <button id="toggle-raw-btn" class="action-btn" data-i18n="raw">Raw ▸</button>
+            </div>
+          </div>
+          <div id="result-steps" class="steps-list" style="display:none"></div>
+          <pre id="result-raw" class="raw-json" style="display:none"></pre>
+          <div id="artifact-list" class="artifact-list"></div>
+        </div>
 
-      <!-- Input Area -->
-      <div class="input-area">
-        <textarea id="goal" rows="2"
-          data-i18n-placeholder="whatToDo"
-          placeholder="What do you want MOMO to do?"
-          maxlength="4000"
-          autofocus></textarea>
-        <div class="input-actions">
-          <div class="input-actions-left">
-            <button type="button" id="toggle-advanced" class="action-chip" title="Show advanced options" aria-expanded="false">
-              <span>+</span> <span data-i18n="options">Options</span>
+      </div><!-- /output-panel -->
+
+      <!-- ═══ RIGHT: INPUT PANEL ═══ -->
+      <div class="input-panel" id="input-panel">
+
+        <!-- Recent Tasks -->
+        <div class="recent-tasks" id="recent-tasks">
+          <div class="qc-label">Recent Tasks</div>
+          <div class="rt-list" id="rt-list">
+            <div class="rt-empty">No tasks yet</div>
+          </div>
+        </div>
+
+        <!-- Quick Commands -->
+        <div class="quick-cmds" id="quick-cmds">
+          <div class="qc-label">Quick Tasks</div>
+          <div class="qc-chips">
+            <button class="qc-chip" data-prompt="Do a comprehensive market analysis on this topic, including competitors, trends, and SWOT">📊 Market Research</button>
+            <button class="qc-chip" data-prompt="Write production-ready code with documentation and tests">💻 Write Code</button>
+            <button class="qc-chip" data-prompt="Analyze the data and create visual charts with insights">📈 Data Analysis</button>
+            <button class="qc-chip" data-prompt="Write a detailed research report with citations and references">📝 Generate Report</button>
+            <button class="qc-chip" data-prompt="Brainstorm creative ideas and solutions for this topic">💡 Brainstorm</button>
+            <button class="qc-chip" data-prompt="Review and summarize the key points from the provided content">📋 Summarize</button>
+          </div>
+        </div>
+
+        <!-- System Status -->
+        <div class="sys-status" id="sys-status">
+          <div class="qc-label">System Status</div>
+          <div class="sys-status-grid">
+            <div class="ss-item">
+              <span class="ss-dot" id="ss-model-dot"></span>
+              <span class="ss-label">Model</span>
+              <span class="ss-value" id="ss-model-name">loading...</span>
+            </div>
+            <div class="ss-item">
+              <span class="ss-dot ss-dot-ok" id="ss-server-dot"></span>
+              <span class="ss-label">Server</span>
+              <span class="ss-value" id="ss-server-status">online</span>
+            </div>
+            <div class="ss-item">
+              <span class="ss-dot" id="ss-tools-dot"></span>
+              <span class="ss-label">Tools</span>
+              <span class="ss-value" id="ss-tools-count">—</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Input Area -->
+        <div class="input-area">
+          <textarea id="goal" rows="4"
+            data-i18n-placeholder="whatToDo"
+            placeholder="What do you want MOMO to do?"
+            maxlength="4000"
+            autofocus></textarea>
+          <div class="input-actions">
+            <div class="input-actions-left">
+              <button type="button" id="toggle-advanced" class="action-chip" title="Show advanced options" aria-expanded="false">
+                <span>+</span> <span data-i18n="options">Options</span>
+              </button>
+              <label class="attach-btn" title="Attach files" aria-label="Attach files">
+                +
+                <input type="file" id="attachments-input" multiple hidden />
+              </label>
+              <button type="button" id="mic-btn" class="mic-btn" title="Voice input" aria-label="Voice input">
+                ◉
+              </button>
+            </div>
+          </div>
+          <div class="action-row">
+            <button type="submit" id="run-btn" class="run-btn">
+              <span>▶</span>
             </button>
-            <label class="attach-btn" title="Attach files" aria-label="Attach files">
-              +
-              <input type="file" id="attachments-input" multiple hidden />
-            </label>
-            <button type="button" id="mic-btn" class="mic-btn" title="Voice input" aria-label="Voice input">
-              ◉
+            <button type="button" id="voice-input-btn" class="voice-input-btn">
+              <img src="/voice-icon.png" class="voice-icon" alt="" />
             </button>
           </div>
-          <button type="submit" id="run-btn" class="run-btn">
-            <span>▶</span> <span data-i18n="submit">Run</span>
-          </button>
-        </div>
-        <div class="attachment-chips" id="attachment-chips" style="display:none"></div>
-        <!-- Advanced options -->
-        <div class="advanced-options" id="advanced-options" style="display:none">
-          <div class="option-row">
-            <label class="opt-label" data-i18n="type">Type</label>
-            <select id="task-type" class="opt-select">
-              <option value="auto">Auto detect</option>
-              <option value="general">General</option>
-              <option value="research">Research</option>
-              <option value="code">Code</option>
-              <option value="presentation">Slides</option>
-              <option value="image_generation">Image</option>
-              <option value="video_generation">Video</option>
-              <option value="voice_generation">Voice</option>
-              <option value="data_analysis">Data</option>
-              <option value="automation">Automation</option>
-              <option value="social_publish">Social Publish</option>
-              <option value="education">Education</option>
-              <option value="healthcare">Healthcare</option>
-              <option value="real_estate">Real Estate</option>
-              <option value="financial_analysis">Finance</option>
-              <option value="legal_review">Legal</option>
-              <option value="video_editing">Video Editing</option>
-              <option value="podcast_production">Podcast</option>
-            </select>
-            <label class="opt-label" data-i18n="format">Format</label>
-            <select id="output-format" class="opt-select">
-              <option value="auto">Auto</option>
-              <option value="markdown">Markdown</option>
-              <option value="slides">Slides</option>
-              <option value="image">Image</option>
-              <option value="pdf">PDF</option>
-              <option value="data">Data</option>
-            </select>
-            <label class="opt-label" data-i18n="model">Model</label>
-            <select id="model-select" class="opt-select">
-              <option value="">default</option>
-            </select>
-          </div>
-          <div class="option-row" id="mode-row">
-            <label class="opt-label">Mode</label>
-            <select id="execution-mode" class="opt-select">
-              <option value="auto">Auto</option>
-              <option value="task">Single Task</option>
-              <option value="project">Project</option>
-            </select>
-            <label class="opt-label">Collaboration</label>
-            <select id="collaboration-mode" class="opt-select" style="display:none">
-              <option value="dag-pipeline">Phase Pipeline</option>
-              <option value="master-worker">Master-Worker</option>
-            </select>
+          <div class="attachment-chips" id="attachment-chips" style="display:none"></div>
+          <!-- Advanced options -->
+          <div class="advanced-options" id="advanced-options" style="display:none">
+            <div class="option-row">
+              <label class="opt-label" data-i18n="type">Type</label>
+              <select id="task-type" class="opt-select">
+                <option value="auto">Auto detect</option>
+                <option value="general">General</option>
+                <option value="research">Research</option>
+                <option value="code">Code</option>
+                <option value="presentation">Slides</option>
+                <option value="image_generation">Image</option>
+                <option value="video_generation">Video</option>
+                <option value="voice_generation">Voice</option>
+                <option value="data_analysis">Data</option>
+                <option value="automation">Automation</option>
+                <option value="social_publish">Social Publish</option>
+                <option value="education">Education</option>
+                <option value="healthcare">Healthcare</option>
+                <option value="real_estate">Real Estate</option>
+                <option value="financial_analysis">Finance</option>
+                <option value="legal_review">Legal</option>
+                <option value="video_editing">Video Editing</option>
+                <option value="podcast_production">Podcast</option>
+              </select>
+              <label class="opt-label" data-i18n="format">Format</label>
+              <select id="output-format" class="opt-select">
+                <option value="auto">Auto</option>
+                <option value="markdown">Markdown</option>
+                <option value="slides">Slides</option>
+                <option value="image">Image</option>
+                <option value="pdf">PDF</option>
+                <option value="data">Data</option>
+              </select>
+              <label class="opt-label" data-i18n="model">Model</label>
+              <select id="model-select" class="opt-select">
+                <option value="">default</option>
+              </select>
+            </div>
+            <div class="option-row" id="mode-row">
+              <label class="opt-label">Mode</label>
+              <select id="execution-mode" class="opt-select">
+                <option value="auto">Auto</option>
+                <option value="task">Single Task</option>
+                <option value="project">Project</option>
+              </select>
+              <label class="opt-label">Collaboration</label>
+              <select id="collaboration-mode" class="opt-select" style="display:none">
+                <option value="dag-pipeline">Phase Pipeline</option>
+                <option value="master-worker">Master-Worker</option>
+              </select>
+            </div>
           </div>
         </div>
 
-      </div>
-
-      <!-- Cancel button (visible during run) -->
-      <div class="cancel-bar" id="cancel-bar" style="display:none">
-        <button id="cancel-btn" class="action-btn danger" data-i18n="cancel">Cancel</button>
-        <span class="cancel-goal" id="task-goal-display"></span>
-      </div>
-
-      <!-- Execution Timeline -->
-      <div id="timeline" class="timeline" style="display:none">
-        <div class="timeline-progress">
-          <div class="timeline-progress-fill" id="timeline-progress-fill"></div>
+        <!-- Cancel button (visible during run) -->
+        <div class="cancel-bar" id="cancel-bar" style="display:none">
+          <button id="cancel-btn" class="action-btn danger" data-i18n="cancel">Cancel</button>
+          <span class="cancel-goal" id="task-goal-display"></span>
         </div>
-      </div>
 
-      <!-- Streaming output -->
-      <div class="streaming-output" id="streaming-output" style="display:none">
-        <div class="streaming-header">Streaming output</div>
-        <div class="streaming-text" id="streaming-text"></div>
-      </div>
-
-      <!-- Result -->
-      <div id="result-section" class="card result-card" style="display:none">
-        <div class="result-header">
-          <span class="result-state" id="result-state"></span>
-          <span class="result-summary-text" id="result-summary"></span>
-          <div class="result-actions">
-            <button id="retry-btn" class="action-btn" style="display:none" data-i18n="retry">Retry</button>
-            <button id="replay-btn" class="action-btn" style="display:none" data-i18n="selfImprove">Self-improve</button>
-            <button id="toggle-steps-btn" class="action-btn" data-i18n="steps">Steps ▾</button>
-            <button id="toggle-raw-btn" class="action-btn" data-i18n="raw">Raw ▸</button>
-          </div>
-        </div>
-        <div id="result-steps" class="steps-list" style="display:none"></div>
-        <pre id="result-raw" class="raw-json" style="display:none"></pre>
-        <div id="artifact-list" class="artifact-list"></div>
-      </div>
+      </div><!-- /input-panel -->
 
     </div><!-- /#chat-workspace -->
 
@@ -674,6 +731,6 @@ if ('serviceWorker' in navigator) {
 }
 </script>
 
-<script src="/app.js?v=0.9.3"></script>
+<script src="/app.js?v=0.9.7"></script>
 </body>
 </html>

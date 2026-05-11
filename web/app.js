@@ -269,6 +269,13 @@ const CLOUD_PROVIDERS = {
 };
 
 // ── Helpers ─────────────────────────────────────────────────────────────────────
+const displayModel = (name) => {
+  if (!name) return '—';
+  // Strip provider prefix (e.g. "cloud:deepseek-v4-flash" → "deepseek-v4-flash")
+  const idx = name.indexOf(':');
+  return idx > 0 ? name.slice(idx + 1) : name;
+};
+
 const esc = (s) => {
   if (s == null) return '';
   return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
@@ -633,9 +640,11 @@ let mediaRecorder = null;
 let audioChunks = [];
 let isRecording = false;
 
+const _voiceBtns = () => [document.getElementById('mic-btn'), document.getElementById('voice-input-btn')].filter(Boolean);
+
 async function toggleRecording() {
-  const micBtn = document.getElementById('mic-btn');
-  if (!micBtn) return;
+  const btns = _voiceBtns();
+  if (btns.length === 0) return;
 
   if (isRecording) {
     // Stop recording
@@ -659,8 +668,7 @@ async function toggleRecording() {
       // Stop all tracks
       stream.getTracks().forEach(t => t.stop());
       isRecording = false;
-      micBtn.classList.remove('recording');
-      micBtn.textContent = '🎤';
+      _voiceBtns().forEach(b => { b.classList.remove('recording'); });
 
       if (audioChunks.length === 0) return;
 
@@ -680,9 +688,8 @@ async function toggleRecording() {
 
       if (!base64) return;
 
-      // Show recording indicator
-      micBtn.textContent = '⏳';
-      micBtn.disabled = true;
+      // Show processing indicator
+      _voiceBtns().forEach(b => { b.disabled = true; });
 
       try {
         const data = await api('/api/voice/transcribe', {
@@ -704,20 +711,16 @@ async function toggleRecording() {
         log('[voice] Error: ' + err.message);
       }
 
-      micBtn.textContent = '🎤';
-      micBtn.disabled = false;
+      _voiceBtns().forEach(b => { b.disabled = false; });
       audioChunks = [];
     };
 
     mediaRecorder.start();
     isRecording = true;
-    micBtn.classList.add('recording');
-    micBtn.textContent = '🔴';
+    _voiceBtns().forEach(b => { b.classList.add('recording'); });
   } catch (err) {
     log('[voice] Mic error: ' + err.message);
-    // Browser doesn't support microphone or user denied
-    micBtn.style.opacity = '0.4';
-    micBtn.title = 'Microphone not available';
+    _voiceBtns().forEach(b => { b.style.opacity = '0.4'; b.title = 'Microphone not available'; });
   }
 }
 
@@ -1263,6 +1266,9 @@ function handleTerminal(status, data) {
     if (t) { t.status = status === 'failed' ? 'failed' : 'completed'; t.result = result; }
     renderProjectTaskList();
   }
+
+  // Refresh recent tasks list
+  if (window.refreshRecentTasks) window.refreshRecentTasks();
 
   // Reset context panel and progress
   showChatProgressBar(false);
@@ -2063,7 +2069,7 @@ async function loadConfig() {
     S.config = data;
 
     // Topbar model badge
-    const modelName = data.plannerModel || 'unknown';
+    const modelName = displayModel(data.plannerModel) || 'unknown';
     const topbarModel = document.getElementById('topbar-model-name');
     if (topbarModel) topbarModel.textContent = modelName.length > 24 ? modelName.slice(0, 24) + '...' : modelName;
 
@@ -2714,6 +2720,74 @@ async function init() {
     document.getElementById('project-create-form').style.display = 'block';
   });
 
+  // Quick command chips
+  document.querySelectorAll('.qc-chip').forEach(el => {
+    el.addEventListener('click', () => {
+      const goalEl = document.getElementById('goal');
+      goalEl.value = el.dataset.prompt;
+      goalEl.dispatchEvent(new Event('input'));
+      goalEl.focus();
+    });
+  });
+
+  // Refresh recent tasks (also called after task completion)
+  window.refreshRecentTasks = async function() {
+    try {
+      const res = await fetch('/api/tasks');
+      const data = await res.json();
+      const list = document.getElementById('rt-list');
+      if (!list) return;
+      const tasks = (data.tasks || data || [])
+        .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0))
+        .slice(0, 8);
+      if (tasks.length === 0) {
+        list.innerHTML = '<div class="rt-empty">No tasks yet</div>';
+        return;
+      }
+      list.innerHTML = tasks.map(t => {
+        const status = t.status || 'completed';
+        const goal = (t.goal || 'Unknown').slice(0, 40);
+        const time = t.createdAt ? new Date(t.createdAt).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}) : '';
+        return `<div class="rt-item" data-task-id="${t.taskId}">
+          <span class="rt-item-goal" title="${esc(t.goal || '')}">${esc(goal)}</span>
+          <span class="rt-item-status ${status}"></span>
+          <span class="rt-item-time">${esc(time)}</span>
+        </div>`;
+      }).join('');
+      list.querySelectorAll('.rt-item').forEach(el => {
+        el.addEventListener('click', () => {
+          const tid = el.dataset.taskId;
+          if (tid) openTaskDetail(tid);
+        });
+      });
+    } catch (e) { console.warn('[tasks]', e.message); }
+  };
+  window.refreshRecentTasks();
+
+  // Populate system status
+  (async () => {
+    try {
+      const res = await fetch('/api/system');
+      const data = await res.json();
+      const modelName = document.getElementById('ss-model-name');
+      const toolsCount = document.getElementById('ss-tools-count');
+      const modelDot = document.getElementById('ss-model-dot');
+      if (modelName) {
+        const m = displayModel(data.plannerModel) || '—';
+        modelName.textContent = m.length > 25 ? m.substring(0, 22) + '...' : m;
+      }
+      if (toolsCount) {
+        const tRes = await fetch('/api/tools');
+        const tData = await tRes.json();
+        toolsCount.textContent = (tData.tools || tData || []).length || '—';
+      }
+      if (modelDot) {
+        const ok = data.health?.ok;
+        modelDot.className = 'ss-dot' + (ok ? ' ss-dot-ok' : '');
+      }
+    } catch (e) { console.warn('[status]', e.message); }
+  })();
+
   // Goal input
   const goalEl = document.getElementById('goal');
 
@@ -2754,6 +2828,8 @@ async function init() {
 
   // Microphone
   document.getElementById('mic-btn').addEventListener('click', toggleRecording);
+  const voiceBtn = document.getElementById('voice-input-btn');
+  if (voiceBtn) voiceBtn.addEventListener('click', toggleRecording);
 
   // Run button
   document.getElementById('run-btn').addEventListener('click', startTask);
@@ -2974,8 +3050,9 @@ async function init() {
     renderHomeView();
   }
 
-  // Periodic status check
+  // Periodic status check & recent tasks refresh
   setInterval(loadSystemStatus, 30000);
+  setInterval(() => { if (window.refreshRecentTasks) window.refreshRecentTasks(); }, 30000);
 }
 
 // ── PWA: Install Prompt ──────────────────────────────────────────────────────────
